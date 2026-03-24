@@ -79,9 +79,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Se você REALMENTE precisa do entrypoint.sh para variáveis de ambiente, mantenha as próximas 3 linhas.
 # Caso contrário, pode deletar o arquivo do seu projeto e remover estas linhas:
-# COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
-# RUN chmod +x entrypoint.sh
-# ENTRYPOINT ["./entrypoint.sh"]
+COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
+RUN chmod +x entrypoint.sh
+
+USER root
+ENTRYPOINT ["./entrypoint.sh"]
 
 USER nextjs
 
