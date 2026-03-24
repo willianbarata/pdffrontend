@@ -7,7 +7,6 @@ RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-
 ############################################
 # Dependencies
 ############################################
@@ -21,7 +20,6 @@ RUN \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
   else echo "Lockfile not found." && exit 1; \
   fi
-
 
 ############################################
 # Builder
@@ -45,7 +43,6 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
-
 ############################################
 # Runner (produção)
 ############################################
@@ -58,7 +55,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Apenas o necessário em runtime
+# Apenas o necessário em runtime (openssl é necessário para o Prisma Client em alpine)
 RUN apk add --no-cache openssl
 
 # Usuário não-root
@@ -76,21 +73,17 @@ RUN mkdir -p public/videos .next \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma (schema)
+# (Opcional) Copiar schema do Prisma - Mantido apenas por segurança, 
+# mas o client já está embutido no standalone
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
-# Entrypoint
-COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
-RUN chmod +x entrypoint.sh
-
-# Install global prisma to ensure we use the correct version (5.19.1) and NOT latest (7.x)
-# This prevents incompatible schema validation errors
-RUN npm install -g prisma@5.19.1
+# Se você REALMENTE precisa do entrypoint.sh para variáveis de ambiente, mantenha as próximas 3 linhas.
+# Caso contrário, pode deletar o arquivo do seu projeto e remover estas linhas:
+# COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
+# RUN chmod +x entrypoint.sh
+# ENTRYPOINT ["./entrypoint.sh"]
 
 USER nextjs
 
-ENTRYPOINT ["./entrypoint.sh"]
-
-# Runtime: Use global prisma binary directly
-# Removed seed execution as requested by user
-CMD ["/bin/sh", "-c", "prisma db push --accept-data-loss --skip-generate && node server.js"]
+# Inicia apenas a aplicação, sem mexer no banco
+CMD ["node", "server.js"]
